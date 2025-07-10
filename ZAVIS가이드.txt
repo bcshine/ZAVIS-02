@@ -21,8 +21,44 @@ ZAVIS 웹앱, 단일페이지 웹앱앱을 만든다.
 
 그 아래, 
 무엇이건 물어보세요, 'Click!' 버튼을 만든다. (입력창처럼)
-이 'Click!' 버튼을 누르면, https://chatgpt.com/g/g-68442006f6e881918358da30dbd4ef86-moiris-sajangnimyi-tongcalryeogissneun-joeonja
+이 'Click!' 버튼을 누르면, https://chatgpt.com/g/g-684f6e6b9ed48191bb537979053a36cc-naeireumeun-zavis-sajangnimyi-supeoaeb
 링크로  이동한다. 
+
+그 아래 로그인, 회원가입 버튼이 있다. 
+회원 가입하고, 로그인 하여야, 해당 링크가 작동하게 된다.  
+회원가입 안하고, 로그인 안하면, 이 버튼이 작동하지 않는다. 
+
+회원가입은 수파베이스로 한다. 
+수파베이스 정보는 다음과 같다.
+
+수파베이스 프로젝트
+SB-Zavis-01
+
+project id
+uscvzvmtskestpyrhuhe
+
+Access Tokens
+sbp_034ea4fdc1a222bc6bc6f167d48222d5131b491e
+
+project url.
+https://uscvzvmtskestpyrhuhe.supabase.co
+
+anon key.
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzY3Z6dm10c2tlc3RweXJodWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxMDkyNjIsImV4cCI6MjA2NzY4NTI2Mn0.fGMLp-DirDyejS_axAta76k0O1lJCPRAKDIAxVd9tUc
+
+내가 원하는 테이블 조건
+이름
+전화번호
+이메일
+비번
+방문횟수
+
+이렇게 변수를 만들고, 테이블을 만들고,
+로그인 인증기능을 구현해다오.
+이 모든 기능은 웹과 앱 모두에서 원활히 작동해야  한다. 이것을 계속 체크하면서 코드를 짜라.
+로그인이 되어야, 
+모든 코드에 상세한 주석을 단다. 
+
 
 
 

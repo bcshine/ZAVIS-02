@@ -257,18 +257,15 @@
 </head>
 <body>
   <div class="container">
-    <div class="title">ZAVIS V2.0</div>
+    <div class="title">ZAVIS</div>
     <img src="mp1.png" alt="나침반" class="compass">
     <div class="desc">
       <span>사장님의 수퍼앱</span>
       <span>통찰적인 조언자</span>
       <span>의사결정 나침반</span>
     </div>
-    <a href="https://chat.openai.com/g/g-684f6e6b9ed48191bb537979053a36cc-naeireumeun-zavis-sajangnimyi-supeoaeb" 
-       target="_blank" 
-       rel="noopener noreferrer"
-       class="ask-btn" 
-       style="text-decoration: none; display: inline-block; color: black;">질문주세요, 'Click!'</a>
+    <!-- 질문 버튼: 입력창처럼 보이게, 인증 시에만 활성화 -->
+    <button id="askBtn" class="ask-btn" style="text-decoration: none; display: inline-block; color: black; border-radius: 12px; border: 2px solid #e0cfa9; background: #fffbe9; margin-bottom: 16px; width: 100%; max-width: 320px; min-width: 180px; font-size: 1.1rem; font-family: inherit; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 16px 12px; text-align: center; cursor: pointer;" disabled>무엇이건 물어보세요, 'Click!'</button>
     
     <div class="auth-section">
       <div id="authLoading" style="display: block; text-align: center; padding: 20px;">
@@ -300,7 +297,9 @@
     
     // 인증 상태 확인
     let authChecked = false;
-    
+    let isAuthenticated = false;
+    let askBtnLink = 'https://chatgpt.com/g/g-684f6e6b9ed48191bb537979053a36cc-naeireumeun-zavis-sajangnimyi-supeoaeb';
+
     async function checkAuth() {
       if (authChecked) return;
       authChecked = true;
@@ -360,6 +359,8 @@
       document.getElementById('authLoading').style.display = 'none';
       document.getElementById('authButtons').style.display = 'flex';
       document.getElementById('userInfo').style.display = 'none';
+      isAuthenticated = false;
+      document.getElementById('askBtn').disabled = true;
     }
     
     function showUserInfo(profile) {
@@ -368,6 +369,8 @@
       document.getElementById('userInfo').style.display = 'block';
       document.getElementById('userName').textContent = profile.name || profile.email;
       document.getElementById('userStats').textContent = `방문횟수: ${profile.visit_count || 0}회`;
+      isAuthenticated = true;
+      document.getElementById('askBtn').disabled = false;
     }
     
     // 로그아웃 버튼 이벤트
@@ -388,6 +391,15 @@
           }
         });
       }
+      // 질문 버튼 클릭 이벤트
+      const askBtn = document.getElementById('askBtn');
+      askBtn.addEventListener('click', function() {
+        if (isAuthenticated) {
+          window.open(askBtnLink, '_blank');
+        } else {
+          alert('로그인 후 이용하실 수 있습니다.');
+        }
+      });
     });
     
     // 페이지 로드 시 인증 확인
