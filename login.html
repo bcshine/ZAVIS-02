@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZAVIS - 로그인</title>
+  <link href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2107@1.1/NEXON_Gothic.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'NEXON Gothic', sans-serif;
+      background: #f5ecd7;
+      color: #222;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    
+    .title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-align: center;
+      color: #222;
+    }
+    
+    .subtitle {
+      font-size: 1.1rem;
+      margin-bottom: 32px;
+      text-align: center;
+      color: #666;
+    }
+    
+    .form-group {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 2px solid #e0cfa9;
+      border-radius: 12px;
+      background: #fffbe9;
+      color: #222;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #d6b98c;
+      background: #fff;
+    }
+    
+    .form-input::placeholder {
+      color: #999;
+    }
+    
+    .login-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-family: inherit;
+      font-weight: bold;
+      background: #fffbe9;
+      border: 2px solid #e0cfa9;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, border 0.2s;
+      margin-bottom: 20px;
+    }
+    
+    .login-btn:hover {
+      background: #f7efd2;
+      border-color: #d6b98c;
+    }
+    
+    .login-btn:disabled {
+      background: #f0f0f0;
+      border-color: #ddd;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .links {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .link {
+      display: inline-block;
+      font-size: 1rem;
+      color: #666;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+      margin: 0 8px;
+    }
+    
+    .link:hover {
+      background: rgba(0,0,0,0.05);
+    }
+    
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    @media (max-width: 500px) {
+      .container { padding: 16px; }
+      .title { font-size: 2rem; }
+      .form-input { padding: 12px 14px; }
+      .login-btn { padding: 14px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">ZAVIS</h1>
+    <p class="subtitle">로그인</p>
+    
+    <form id="loginForm" class="form">
+      <div class="form-group">
+        <label class="form-label" for="email">이메일</label>
+        <input type="email" id="email" name="email" class="form-input" placeholder="이메일을 입력하세요" required>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="password">비밀번호</label>
+        <input type="password" id="password" name="password" class="form-input" placeholder="비밀번호를 입력하세요" required>
+      </div>
+      
+      <button type="submit" class="login-btn" id="loginBtn">로그인</button>
+    </form>
+    
+    <div class="links">
+      <a href="signup.html" class="link">회원가입</a>
+      <a href="index.html" class="link">홈으로</a>
+    </div>
+  </div>
+  
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    // 로그인 폼 처리
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      
+      if (!email || !password) {
+        alert('이메일과 비밀번호를 모두 입력해주세요.');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = '로그인 중...';
+      
+      try {
+        const result = await signIn(email, password);
+        
+        if (result.success) {
+          window.location.href = 'index.html';
+        } else {
+          btn.disabled = false;
+          btn.textContent = '로그인';
+        }
+      } catch (error) {
+        console.error('로그인 처리 오류:', error);
+        btn.disabled = false;
+        btn.textContent = '로그인';
+      }
+    });
+  </script>
+</body>
+</html> 

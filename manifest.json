@@ -1,0 +1,26 @@
+{
+  "name": "ZAVIS - 사장님의 수퍼앱",
+  "short_name": "ZAVIS",
+  "description": "통찰적인 조언자, 의사결정 나침반",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5ecd7",
+  "theme_color": "#f5ecd7",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "mp1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "mp1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "ko"
+} 
