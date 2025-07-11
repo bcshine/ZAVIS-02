@@ -205,9 +205,16 @@
       const password = document.getElementById('password').value;
       const btn = document.getElementById('loginBtn');
       
-      // 이메일 또는 비밀번호가 비어있으면 경고 후 중단
+      // 입력값 검증
       if (!email || !password) {
         alert('이메일과 비밀번호를 모두 입력해주세요.');
+        return;
+      }
+      
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('올바른 이메일 형식을 입력해주세요.');
         return;
       }
       
@@ -215,23 +222,64 @@
       btn.disabled = true;
       btn.textContent = '로그인 중...';
       
+      // 진행 상태 표시를 위한 간단한 애니메이션
+      let dots = '';
+      const loadingInterval = setInterval(() => {
+        dots = dots.length >= 3 ? '' : dots + '.';
+        btn.textContent = `로그인 중${dots}`;
+      }, 500);
+      
       try {
         // signIn 함수 호출(비동기)
         const result = await signIn(email, password);
         
+        // 로딩 애니메이션 중지
+        clearInterval(loadingInterval);
+        
         // 로그인 성공 시 메인 페이지로 이동
         if (result.success) {
-          window.location.href = 'index.html';
+          // 성공 상태 표시
+          btn.textContent = '로그인 완료! 메인 페이지로 이동 중...';
+          btn.style.background = '#d4edda';
+          btn.style.borderColor = '#c3e6cb';
+          btn.style.color = '#155724';
+          
+          // 1초 후 메인 페이지로 이동
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1000);
         } else {
-          // 실패 시 버튼 복구
+          // 실패 시 에러 메시지 표시
+          const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
+          alert(errorMessage);
+          
+          // 버튼 복구
           btn.disabled = false;
           btn.textContent = '로그인';
+          btn.style.background = '#fffbe9';
+          btn.style.borderColor = '#e0cfa9';
+          btn.style.color = '#222';
         }
       } catch (error) {
+        // 로딩 애니메이션 중지
+        clearInterval(loadingInterval);
+        
         // 예외 발생 시 콘솔 출력 및 버튼 복구
         console.error('로그인 처리 오류:', error);
+        
+        // 에러 메시지 표시
+        const errorMessage = error.message?.includes('시간이 초과') 
+          ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
+          : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+        
+        alert(errorMessage);
+        
+        // 버튼 복구
         btn.disabled = false;
         btn.textContent = '로그인';
+        btn.style.background = '#fffbe9';
+        btn.style.borderColor = '#e0cfa9';
+        btn.style.color = '#222';
       }
     });
   </script>

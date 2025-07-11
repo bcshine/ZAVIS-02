@@ -1,9 +1,9 @@
 // ZAVIS 인증 시스템
 
 /**
- * 회원가입 함수
+ * 회원가입 함수 (개선된 버전)
  * - 이메일, 비밀번호, 이름, 전화번호를 받아 수파베이스 인증 계정과 프로필을 생성
- * - 모바일 환경에서는 Edge Function을 통한 백업 프로필 생성도 시도
+ * - 모바일 환경에서 성능 최적화 및 명확한 피드백 제공
  * @param {string} email 사용자 이메일
  * @param {string} password 사용자 비밀번호
  * @param {string} name 사용자 이름
@@ -20,8 +20,13 @@ async function signUp(email, password, name, phone) {
       throw new Error('수파베이스 클라이언트가 초기화되지 않았습니다.');
     }
     
-    // 3. 수파베이스 Auth 계정 생성 (이메일/비밀번호 기반)
-    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+    // 3. 타임아웃 설정 (30초)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.')), 30000);
+    });
+    
+    // 4. 수파베이스 Auth 계정 생성 (타임아웃 적용)
+    const authPromise = supabaseClient.auth.signUp({
       email,
       password,
       options: {
@@ -30,28 +35,31 @@ async function signUp(email, password, name, phone) {
       }
     });
     
-    // 4. 인증 계정 생성 중 오류 발생 시 예외 처리
+    const { data: authData, error: authError } = await Promise.race([authPromise, timeoutPromise]);
+    
+    // 5. 인증 계정 생성 중 오류 발생 시 예외 처리
     if (authError) throw authError;
     
-    // 5. 사용자 계정 생성 성공 여부 확인
+    // 6. 사용자 계정 생성 성공 여부 확인
     if (!authData.user?.id) {
       throw new Error('사용자 계정 생성에 실패했습니다.');
     }
     
     console.log('Auth 사용자 생성 완료:', authData.user.id);
     
-    // 6. 프로필 생성 시도 (profiles 테이블)
+    // 7. 프로필 생성 시도 (단순화된 버전)
     let profileCreated = false;
     try {
-      // 6-1. 프로필 직접 생성 시도
-      const { data: profileData, error: profileError } = await supabaseClient
+      const profilePromise = supabaseClient
         .from('profiles')
         .insert([{ user_id: authData.user.id, name, phone, email, visit_count: 1 }])
         .select()
         .single();
       
+      const { data: profileData, error: profileError } = await Promise.race([profilePromise, timeoutPromise]);
+      
       if (profileError) {
-        // 6-2. 이미 프로필이 존재하는 경우(중복) 업데이트 시도
+        // 이미 프로필이 존재하는 경우(중복) 업데이트 시도
         if (profileError.code === '23505') {
           await supabaseClient
             .from('profiles')
@@ -59,72 +67,56 @@ async function signUp(email, password, name, phone) {
             .eq('user_id', authData.user.id);
           profileCreated = true;
         } else {
-          // 6-3. 기타 오류는 예외로 처리
-          throw profileError;
+          console.warn('프로필 생성 실패:', profileError);
+          // 프로필 생성 실패해도 회원가입은 성공으로 처리
         }
       } else {
-        // 6-4. 프로필 생성 성공
         profileCreated = true;
       }
     } catch (error) {
-      // 7. 프로필 생성 실패 시 모바일 환경에서 Edge Function 백업 시도
-      console.error('프로필 생성 실패:', error);
-      if (navigator.userAgent.match(/Mobile|Android|iPhone/)) {
-        try {
-          // Edge Function 호출로 모바일 백업 프로필 생성
-          const response = await fetch(`${supabaseClient.supabaseUrl}/functions/v1/mobile-signup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseClient.supabaseKey}`
-            },
-            body: JSON.stringify({ email, password, name, phone })
-          });
-          
-          const result = await response.json();
-          if (result.success) profileCreated = true;
-        } catch (edgeError) {
-          console.error('Edge Function 실패:', edgeError);
-        }
-      }
+      console.warn('프로필 생성 중 오류:', error);
+      // 프로필 생성 실패해도 회원가입은 성공으로 처리
     }
     
-    // 8. 임시 사용자 정보(이름, 이메일, 방문횟수) 로컬 스토리지에 저장
+    // 8. 임시 사용자 정보 로컬 스토리지에 저장
     localStorage.setItem('zavis-user-info-temp', JSON.stringify({
       name, email, visit_count: 1
     }));
     
-    // 9. 회원가입 성공 메시지(프로필 생성 여부에 따라 안내)
+    // 9. 회원가입 성공 메시지
     const message = profileCreated 
       ? `🎉 회원가입이 완료되었습니다!\n\n📧 ${email}로 보낸 인증 메일을 확인해주세요.`
       : `🎉 회원가입이 완료되었습니다!\n\n📧 ${email}로 보낸 인증 메일을 확인해주세요.\n\n⚠️ 프로필 정보는 첫 로그인 시 자동으로 생성됩니다.`;
     
-    alert(message);
-    return { success: true, user: authData.user };
+    return { success: true, user: authData.user, message };
     
   } catch (error) {
-    // 10. 회원가입 전체 과정에서 발생한 오류 처리 및 안내
+    // 10. 회원가입 전체 과정에서 발생한 오류 처리
     console.error('회원가입 오류:', error);
     
     let errorMessage = '회원가입 중 오류가 발생했습니다.';
     
-    // 10-1. 오류 메시지에 따라 사용자에게 구체적으로 안내
-    if (error.message?.includes('already registered')) {
+    // 구체적인 오류 메시지 분류
+    if (error.message?.includes('already registered') || error.message?.includes('User already registered')) {
       errorMessage = '이미 등록된 이메일입니다.';
-    } else if (error.message?.includes('Password')) {
-      errorMessage = '비밀번호가 너무 짧습니다. (최소 6자)';
-    } else if (error.message?.includes('Email')) {
+    } else if (error.message?.includes('Password') || error.message?.includes('password')) {
+      errorMessage = '비밀번호가 너무 짧습니다. (최소 6자 이상)';
+    } else if (error.message?.includes('Email') || error.message?.includes('email')) {
       errorMessage = '올바른 이메일 형식이 아닙니다.';
+    } else if (error.message?.includes('시간이 초과')) {
+      errorMessage = '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.';
+    } else if (error.message?.includes('network') || error.message?.includes('NetworkError')) {
+      errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
     }
     
-    alert(errorMessage);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, userMessage: errorMessage };
   }
 }
 
 /**
- * 로그인 함수
+ * 로그인 함수 (개선된 버전)
  * - 이메일과 비밀번호로 인증 후, 프로필 정보를 조회 및 방문횟수 증가
+ * - 타임아웃 설정 및 모바일 환경에서 성능 최적화
  * @param {string} email 사용자 이메일
  * @param {string} password 사용자 비밀번호
  * @returns {Promise<{success: boolean, user?: object, profile?: object, error?: string}>}
@@ -139,40 +131,59 @@ async function signIn(email, password) {
       throw new Error('수파베이스 클라이언트가 초기화되지 않았습니다.');
     }
     
-    // 3. 수파베이스 Auth 로그인 시도
-    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+    // 3. 타임아웃 설정 (30초)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('요청 시간이 초과되었습니다. 네트워크 연결을 확인해주세요.')), 30000);
+    });
+    
+    // 4. 수파베이스 Auth 로그인 시도 (타임아웃 적용)
+    const authPromise = supabaseClient.auth.signInWithPassword({
       email,
       password
     });
     
-    // 4. 인증 오류 발생 시 예외 처리
+    const { data: authData, error: authError } = await Promise.race([authPromise, timeoutPromise]);
+    
+    // 5. 인증 오류 발생 시 예외 처리
     if (authError) throw authError;
     
-    // 5. 로그인 성공 여부 확인
+    // 6. 로그인 성공 여부 확인
     if (!authData.user?.id) {
       throw new Error('로그인에 실패했습니다.');
     }
     
     console.log('로그인 성공:', authData.user.id);
     
-    // 6. 프로필 정보 조회 (profiles 테이블)
-    const { data: profileData, error: profileError } = await supabaseClient
+    // 7. 프로필 정보 조회 (profiles 테이블, 타임아웃 적용)
+    const profilePromise = supabaseClient
       .from('profiles')
       .select('*')
       .eq('user_id', authData.user.id)
       .single();
     
-    // 7. 프로필 조회 오류(존재하지 않는 경우 등) 로그 출력
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.error('프로필 조회 오류:', profileError);
+    let profileData = null;
+    try {
+      const { data, error: profileError } = await Promise.race([profilePromise, timeoutPromise]);
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.warn('프로필 조회 오류:', profileError);
+      } else if (data) {
+        profileData = data;
+      }
+    } catch (error) {
+      console.warn('프로필 조회 중 오류:', error);
     }
     
     // 8. 방문 횟수 증가 (프로필이 있을 때만)
     if (profileData) {
-      await supabaseClient
-        .from('profiles')
-        .update({ visit_count: (profileData.visit_count || 0) + 1 })
-        .eq('user_id', authData.user.id);
+      try {
+        await supabaseClient
+          .from('profiles')
+          .update({ visit_count: (profileData.visit_count || 0) + 1 })
+          .eq('user_id', authData.user.id);
+      } catch (error) {
+        console.warn('방문 횟수 업데이트 오류:', error);
+      }
     }
     
     // 9. 사용자 정보(이름, 이메일, 방문횟수) 로컬 스토리지에 저장
@@ -185,25 +196,30 @@ async function signIn(email, password) {
     localStorage.setItem('zavis-user-info', JSON.stringify(userInfo));
     localStorage.removeItem('zavis-user-info-temp');
     
-    // 10. 환영 메시지 표시
-    alert(`환영합니다, ${userInfo.name}님! (${userInfo.visit_count}번째 방문)`);
-    return { success: true, user: authData.user, profile: profileData };
+    // 10. 환영 메시지 생성
+    const welcomeMessage = `환영합니다, ${userInfo.name}님! (${userInfo.visit_count}번째 방문)`;
+    alert(welcomeMessage);
+    
+    return { success: true, user: authData.user, profile: profileData, message: welcomeMessage };
     
   } catch (error) {
-    // 11. 로그인 전체 과정에서 발생한 오류 처리 및 안내
+    // 11. 로그인 전체 과정에서 발생한 오류 처리
     console.error('로그인 오류:', error);
     
     let errorMessage = '로그인 중 오류가 발생했습니다.';
     
-    // 11-1. 오류 메시지에 따라 사용자에게 구체적으로 안내
+    // 구체적인 오류 메시지 분류
     if (error.message?.includes('Invalid login credentials')) {
       errorMessage = '이메일 또는 비밀번호가 잘못되었습니다.';
     } else if (error.message?.includes('Email not confirmed')) {
       errorMessage = '이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해주세요.';
+    } else if (error.message?.includes('시간이 초과')) {
+      errorMessage = '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.';
+    } else if (error.message?.includes('network') || error.message?.includes('NetworkError')) {
+      errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
     }
     
-    alert(errorMessage);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, userMessage: errorMessage };
   }
 }
 

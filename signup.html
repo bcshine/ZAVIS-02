@@ -177,6 +177,7 @@
       const password = document.getElementById('password').value;
       const btn = document.getElementById('signupBtn');
       
+      // 입력값 검증
       if (!name || !email || !phone || !password) {
         alert('모든 필드를 입력해주세요.');
         return;
@@ -187,24 +188,74 @@
         return;
       }
       
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('올바른 이메일 형식을 입력해주세요.');
+        return;
+      }
+      
+      // 로딩 시작
       btn.disabled = true;
       btn.textContent = '회원가입 중...';
+      
+      // 진행 상태 표시를 위한 간단한 애니메이션
+      let dots = '';
+      const loadingInterval = setInterval(() => {
+        dots = dots.length >= 3 ? '' : dots + '.';
+        btn.textContent = `회원가입 중${dots}`;
+      }, 500);
       
       try {
         const result = await signUp(email, password, name, phone);
         
+        // 로딩 애니메이션 중지
+        clearInterval(loadingInterval);
+        
         if (result.success) {
+          // 성공 메시지 표시
+          alert(result.message || '회원가입이 완료되었습니다!');
+          
+          // 성공 상태 표시
+          btn.textContent = '회원가입 완료! 로그인 페이지로 이동 중...';
+          btn.style.background = '#d4edda';
+          btn.style.borderColor = '#c3e6cb';
+          btn.style.color = '#155724';
+          
+          // 2초 후 로그인 페이지로 이동
           setTimeout(() => {
             window.location.href = 'login.html';
           }, 2000);
         } else {
+          // 실패 시 에러 메시지 표시
+          alert(result.userMessage || result.error || '회원가입에 실패했습니다.');
+          
+          // 버튼 복구
           btn.disabled = false;
           btn.textContent = '회원가입';
+          btn.style.background = '#fffbe9';
+          btn.style.borderColor = '#e0cfa9';
+          btn.style.color = '#222';
         }
       } catch (error) {
+        // 로딩 애니메이션 중지
+        clearInterval(loadingInterval);
+        
         console.error('회원가입 처리 오류:', error);
+        
+        // 에러 메시지 표시
+        const errorMessage = error.message?.includes('시간이 초과') 
+          ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
+          : '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.';
+        
+        alert(errorMessage);
+        
+        // 버튼 복구
         btn.disabled = false;
         btn.textContent = '회원가입';
+        btn.style.background = '#fffbe9';
+        btn.style.borderColor = '#e0cfa9';
+        btn.style.color = '#222';
       }
     });
   </script>
