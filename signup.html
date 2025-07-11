@@ -195,67 +195,114 @@
         return;
       }
       
-      // 로딩 시작
-      btn.disabled = true;
-      btn.textContent = '회원가입 중...';
+      // 네트워크 상태 확인 (모바일에서 중요)
+      if (typeof isOnline === 'function' && !isOnline()) {
+        alert('인터넷 연결을 확인해주세요.');
+        return;
+      }
       
-      // 진행 상태 표시를 위한 간단한 애니메이션
-      let dots = '';
-      const loadingInterval = setInterval(() => {
-        dots = dots.length >= 3 ? '' : dots + '.';
-        btn.textContent = `회원가입 중${dots}`;
-      }, 500);
+      // 모바일 환경 감지
+      const isMobile = typeof isMobileEnvironment === 'function' ? isMobileEnvironment() : false;
       
-      try {
-        const result = await signUp(email, password, name, phone);
+      if (isMobile) {
+        // 모바일에서는 더 빠른 로딩 표시
+        btn.disabled = true;
+        btn.textContent = '처리 중...';
         
-        // 로딩 애니메이션 중지
-        clearInterval(loadingInterval);
+        // 더 빠른 애니메이션 (모바일 최적화)
+        let dots = '';
+        const loadingInterval = setInterval(() => {
+          dots = dots.length >= 2 ? '' : dots + '.';
+          btn.textContent = `처리 중${dots}`;
+        }, 300);
         
-        if (result.success) {
-          // 성공 메시지 표시
-          alert(result.message || '회원가입이 완료되었습니다!');
+        try {
+          const result = await signUp(email, password, name, phone);
           
-          // 성공 상태 표시
-          btn.textContent = '회원가입 완료! 로그인 페이지로 이동 중...';
-          btn.style.background = '#d4edda';
-          btn.style.borderColor = '#c3e6cb';
-          btn.style.color = '#155724';
+          clearInterval(loadingInterval);
           
-          // 2초 후 로그인 페이지로 이동
-          setTimeout(() => {
-            window.location.href = 'login.html';
-          }, 2000);
-        } else {
-          // 실패 시 에러 메시지 표시
-          alert(result.userMessage || result.error || '회원가입에 실패했습니다.');
+          if (result.success) {
+            alert(result.message || '회원가입이 완료되었습니다!');
+            btn.textContent = '완료! 로그인 페이지로...';
+            btn.style.background = '#d4edda';
+            btn.style.borderColor = '#c3e6cb';
+            btn.style.color = '#155724';
+            
+            setTimeout(() => {
+              window.location.href = 'login.html';
+            }, 1500);
+          } else {
+            alert(result.userMessage || result.error || '회원가입에 실패했습니다.');
+            btn.disabled = false;
+            btn.textContent = '회원가입';
+            btn.style.background = '#fffbe9';
+            btn.style.borderColor = '#e0cfa9';
+            btn.style.color = '#222';
+          }
+        } catch (error) {
+          clearInterval(loadingInterval);
+          console.error('회원가입 처리 오류:', error);
           
-          // 버튼 복구
+          const errorMessage = error.message?.includes('시간이 초과') 
+            ? '네트워크가 불안정합니다. Wi-Fi 연결을 확인해주세요.'
+            : '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.';
+          
+          alert(errorMessage);
           btn.disabled = false;
           btn.textContent = '회원가입';
           btn.style.background = '#fffbe9';
           btn.style.borderColor = '#e0cfa9';
           btn.style.color = '#222';
         }
-      } catch (error) {
-        // 로딩 애니메이션 중지
-        clearInterval(loadingInterval);
+      } else {
+        // 웹 환경에서는 기존 방식 사용
+        btn.disabled = true;
+        btn.textContent = '회원가입 중...';
         
-        console.error('회원가입 처리 오류:', error);
+        let dots = '';
+        const loadingInterval = setInterval(() => {
+          dots = dots.length >= 3 ? '' : dots + '.';
+          btn.textContent = `회원가입 중${dots}`;
+        }, 500);
         
-        // 에러 메시지 표시
-        const errorMessage = error.message?.includes('시간이 초과') 
-          ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
-          : '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.';
-        
-        alert(errorMessage);
-        
-        // 버튼 복구
-        btn.disabled = false;
-        btn.textContent = '회원가입';
-        btn.style.background = '#fffbe9';
-        btn.style.borderColor = '#e0cfa9';
-        btn.style.color = '#222';
+        try {
+          const result = await signUp(email, password, name, phone);
+          
+          clearInterval(loadingInterval);
+          
+          if (result.success) {
+            alert(result.message || '회원가입이 완료되었습니다!');
+            btn.textContent = '회원가입 완료! 로그인 페이지로 이동 중...';
+            btn.style.background = '#d4edda';
+            btn.style.borderColor = '#c3e6cb';
+            btn.style.color = '#155724';
+            
+            setTimeout(() => {
+              window.location.href = 'login.html';
+            }, 2000);
+          } else {
+            alert(result.userMessage || result.error || '회원가입에 실패했습니다.');
+            btn.disabled = false;
+            btn.textContent = '회원가입';
+            btn.style.background = '#fffbe9';
+            btn.style.borderColor = '#e0cfa9';
+            btn.style.color = '#222';
+          }
+        } catch (error) {
+          clearInterval(loadingInterval);
+          console.error('회원가입 처리 오류:', error);
+          
+          const errorMessage = error.message?.includes('시간이 초과') 
+            ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
+            : '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.';
+          
+          alert(errorMessage);
+          btn.disabled = false;
+          btn.textContent = '회원가입';
+          btn.style.background = '#fffbe9';
+          btn.style.borderColor = '#e0cfa9';
+          btn.style.color = '#222';
+        }
       }
     });
   </script>

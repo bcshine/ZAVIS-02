@@ -218,68 +218,119 @@
         return;
       }
       
-      // 로그인 버튼 비활성화 및 로딩 텍스트 표시
-      btn.disabled = true;
-      btn.textContent = '로그인 중...';
+      // 네트워크 상태 확인 (모바일에서 중요)
+      if (typeof isOnline === 'function' && !isOnline()) {
+        alert('인터넷 연결을 확인해주세요.');
+        return;
+      }
       
-      // 진행 상태 표시를 위한 간단한 애니메이션
-      let dots = '';
-      const loadingInterval = setInterval(() => {
-        dots = dots.length >= 3 ? '' : dots + '.';
-        btn.textContent = `로그인 중${dots}`;
-      }, 500);
+      // 모바일 환경 감지
+      const isMobile = typeof isMobileEnvironment === 'function' ? isMobileEnvironment() : false;
       
-      try {
-        // signIn 함수 호출(비동기)
-        const result = await signIn(email, password);
+      if (isMobile) {
+        // 모바일에서는 더 빠른 로딩 표시
+        btn.disabled = true;
+        btn.textContent = '로그인 중...';
         
-        // 로딩 애니메이션 중지
-        clearInterval(loadingInterval);
+        // 더 빠른 애니메이션 (모바일 최적화)
+        let dots = '';
+        const loadingInterval = setInterval(() => {
+          dots = dots.length >= 2 ? '' : dots + '.';
+          btn.textContent = `로그인 중${dots}`;
+        }, 300);
         
-        // 로그인 성공 시 메인 페이지로 이동
-        if (result.success) {
-          // 성공 상태 표시
-          btn.textContent = '로그인 완료! 메인 페이지로 이동 중...';
-          btn.style.background = '#d4edda';
-          btn.style.borderColor = '#c3e6cb';
-          btn.style.color = '#155724';
+        try {
+          const result = await signIn(email, password);
           
-          // 1초 후 메인 페이지로 이동
-          setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1000);
-        } else {
-          // 실패 시 에러 메시지 표시
-          const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
+          clearInterval(loadingInterval);
+          
+          if (result.success) {
+            btn.textContent = '로그인 완료!';
+            btn.style.background = '#d4edda';
+            btn.style.borderColor = '#c3e6cb';
+            btn.style.color = '#155724';
+            
+            // 모바일에서는 더 빠른 이동
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 500);
+          } else {
+            const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
+            alert(errorMessage);
+            
+            btn.disabled = false;
+            btn.textContent = '로그인';
+            btn.style.background = '#fffbe9';
+            btn.style.borderColor = '#e0cfa9';
+            btn.style.color = '#222';
+          }
+        } catch (error) {
+          clearInterval(loadingInterval);
+          console.error('로그인 처리 오류:', error);
+          
+          const errorMessage = error.message?.includes('시간이 초과') 
+            ? '네트워크가 불안정합니다. Wi-Fi 연결을 확인해주세요.'
+            : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+          
           alert(errorMessage);
           
-          // 버튼 복구
           btn.disabled = false;
           btn.textContent = '로그인';
           btn.style.background = '#fffbe9';
           btn.style.borderColor = '#e0cfa9';
           btn.style.color = '#222';
         }
-      } catch (error) {
-        // 로딩 애니메이션 중지
-        clearInterval(loadingInterval);
+      } else {
+        // 웹 환경에서는 기존 방식 사용
+        btn.disabled = true;
+        btn.textContent = '로그인 중...';
         
-        // 예외 발생 시 콘솔 출력 및 버튼 복구
-        console.error('로그인 처리 오류:', error);
+        let dots = '';
+        const loadingInterval = setInterval(() => {
+          dots = dots.length >= 3 ? '' : dots + '.';
+          btn.textContent = `로그인 중${dots}`;
+        }, 500);
         
-        // 에러 메시지 표시
-        const errorMessage = error.message?.includes('시간이 초과') 
-          ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
-          : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
-        
-        alert(errorMessage);
-        
-        // 버튼 복구
-        btn.disabled = false;
-        btn.textContent = '로그인';
-        btn.style.background = '#fffbe9';
-        btn.style.borderColor = '#e0cfa9';
-        btn.style.color = '#222';
+        try {
+          const result = await signIn(email, password);
+          
+          clearInterval(loadingInterval);
+          
+          if (result.success) {
+            btn.textContent = '로그인 완료! 메인 페이지로 이동 중...';
+            btn.style.background = '#d4edda';
+            btn.style.borderColor = '#c3e6cb';
+            btn.style.color = '#155724';
+            
+            setTimeout(() => {
+              window.location.href = 'index.html';
+            }, 1000);
+          } else {
+            const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
+            alert(errorMessage);
+            
+            btn.disabled = false;
+            btn.textContent = '로그인';
+            btn.style.background = '#fffbe9';
+            btn.style.borderColor = '#e0cfa9';
+            btn.style.color = '#222';
+          }
+        } catch (error) {
+          clearInterval(loadingInterval);
+          console.error('로그인 처리 오류:', error);
+          
+          const errorMessage = error.message?.includes('시간이 초과') 
+            ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
+            : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+          
+          alert(errorMessage);
+          
+          btn.disabled = false;
+          btn.textContent = '로그인';
+          btn.style.background = '#fffbe9';
+          btn.style.borderColor = '#e0cfa9';
+          btn.style.color = '#222';
+        }
       }
     });
   </script>
