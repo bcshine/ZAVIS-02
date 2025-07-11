@@ -110,7 +110,11 @@ async function signUp(email, password, name, phone) {
       password,
       options: {
         emailRedirectTo: `https://bcshine.github.io/ZAVIS-login-auth/`,
-        data: { name, phone }
+        data: { 
+          name: name,
+          phone: phone,
+          full_name: name
+        }
       }
     });
     
@@ -255,8 +259,11 @@ async function signIn(email, password) {
     
     if (isMobile) {
       // 모바일에서는 기본 사용자 정보만 생성하고 프로필은 백그라운드에서 처리
+      const userName = authData.user.user_metadata?.name || authData.user.user_metadata?.full_name || '사용자';
+      const userPhone = authData.user.user_metadata?.phone || null;
+      
       userInfo = {
-        name: authData.user.user_metadata?.name || '사용자',
+        name: userName,
         email: authData.user.email,
         visit_count: 1
       };
@@ -279,23 +286,25 @@ async function signIn(email, password) {
               
             // 로컬 스토리지 업데이트
             const updatedUserInfo = {
-              name: data.name || '사용자',
+              name: data.name || userName,
               email: authData.user.email,
               visit_count: (data.visit_count || 0) + 1
             };
             localStorage.setItem('zavis-user-info', JSON.stringify(updatedUserInfo));
             console.log('백그라운드 프로필 업데이트 완료');
           } else {
-            // 프로필이 없으면 생성
+            // 프로필이 없으면 생성 (전화번호 정보 포함)
+            console.log('프로필 생성 시도 - 이름:', userName, '전화번호:', userPhone);
             await supabaseClient
               .from('profiles')
               .insert([{
                 user_id: authData.user.id,
-                name: userInfo.name,
-                email: userInfo.email,
+                name: userName,
+                phone: userPhone,
+                email: authData.user.email,
                 visit_count: 1
               }]);
-            console.log('백그라운드 프로필 생성 완료');
+            console.log('백그라운드 프로필 생성 완료 (전화번호 포함)');
           }
         } catch (error) {
           console.warn('백그라운드 프로필 처리 실패:', error);
@@ -460,5 +469,63 @@ async function checkAuthStatus() {
     // 4. 인증 상태 확인 과정에서 오류 발생 시 비인증 상태 반환
     console.error('인증 상태 확인 오류:', error);
     return { isAuthenticated: false, user: null, profile: null };
+  }
+}
+
+/**
+ * 전화번호가 누락된 프로필 복구 함수
+ * - 기존 사용자의 누락된 전화번호 정보를 user_metadata에서 복구
+ * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+ */
+async function repairMissingPhoneNumbers() {
+  try {
+    if (!supabaseClient) {
+      throw new Error('수파베이스 클라이언트가 초기화되지 않았습니다.');
+    }
+    
+    // 현재 로그인된 사용자 정보 조회
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: '로그인이 필요합니다.' };
+    }
+    
+    // 사용자의 프로필 조회
+    const { data: profileData, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (profileError) {
+      console.warn('프로필 조회 실패:', profileError);
+      return { success: false, error: '프로필 조회에 실패했습니다.' };
+    }
+    
+    // 전화번호가 누락된 경우에만 복구 시도
+    if (!profileData.phone && user.user_metadata?.phone) {
+      console.log('전화번호 복구 시도:', user.user_metadata.phone);
+      
+      const { error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ 
+          phone: user.user_metadata.phone,
+          name: user.user_metadata.name || user.user_metadata.full_name || profileData.name
+        })
+        .eq('user_id', user.id);
+      
+      if (updateError) {
+        console.error('전화번호 복구 실패:', updateError);
+        return { success: false, error: '전화번호 복구에 실패했습니다.' };
+      }
+      
+      console.log('전화번호 복구 완료');
+      return { success: true, message: '전화번호가 성공적으로 복구되었습니다.' };
+    }
+    
+    return { success: true, message: '전화번호 정보가 이미 올바르게 설정되어 있습니다.' };
+    
+  } catch (error) {
+    console.error('전화번호 복구 오류:', error);
+    return { success: false, error: error.message };
   }
 } 
