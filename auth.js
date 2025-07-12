@@ -260,9 +260,7 @@ async function signIn(email, password) {
     if (isMobile) {
       // 모바일에서는 기본 사용자 정보만 생성하고 프로필은 백그라운드에서 처리
       const userName = authData.user.user_metadata?.name || authData.user.user_metadata?.full_name || '사용자';
-      // raw_user_meta_data에서 전화번호를 정확히 가져오기
-      const userPhone = authData.user.user_metadata?.phone || 
-                       authData.user.raw_user_meta_data?.phone || null;
+      const userPhone = authData.user.user_metadata?.phone || null;
       
       userInfo = {
         name: userName,
@@ -280,18 +278,10 @@ async function signIn(email, password) {
             .single();
           
           if (data) {
-            // 프로필이 있으면 방문횟수 증가 및 전화번호가 누락된 경우 업데이트
-            const updateData = { visit_count: (data.visit_count || 0) + 1 };
-            
-            // 전화번호가 없으면 메타데이터에서 가져와서 업데이트
-            if (!data.phone && userPhone) {
-              updateData.phone = userPhone;
-              console.log('누락된 전화번호 복구:', userPhone);
-            }
-            
+            // 프로필이 있으면 방문횟수 증가
             await supabaseClient
               .from('profiles')
-              .update(updateData)
+              .update({ visit_count: (data.visit_count || 0) + 1 })
               .eq('user_id', authData.user.id);
               
             // 로컬 스토리지 업데이트
@@ -336,55 +326,17 @@ async function signIn(email, password) {
           console.warn('프로필 조회 오류:', profileError);
         } else if (data) {
           profileData = data;
-        } else if (profileError && profileError.code === 'PGRST116') {
-          // 프로필이 없으면 생성 (웹 환경에서도)
-          const userName = authData.user.user_metadata?.name || authData.user.user_metadata?.full_name || '사용자';
-          const userPhone = authData.user.user_metadata?.phone || 
-                           authData.user.raw_user_meta_data?.phone || null;
-          
-          console.log('웹 환경에서 프로필 생성 시도 - 이름:', userName, '전화번호:', userPhone);
-          
-          try {
-            const { data: newProfile } = await supabaseClient
-              .from('profiles')
-              .insert([{
-                user_id: authData.user.id,
-                name: userName,
-                phone: userPhone,
-                email: authData.user.email,
-                visit_count: 1
-              }])
-              .select()
-              .single();
-            
-            if (newProfile) {
-              profileData = newProfile;
-              console.log('웹 환경에서 프로필 생성 완료');
-            }
-          } catch (insertError) {
-            console.warn('웹 환경에서 프로필 생성 실패:', insertError);
-          }
         }
       } catch (error) {
         console.warn('프로필 조회 중 오류:', error);
       }
       
-      // 방문 횟수 증가 및 전화번호 업데이트
+      // 방문 횟수 증가
       if (profileData) {
         try {
-          const updateData = { visit_count: (profileData.visit_count || 0) + 1 };
-          
-          // 전화번호가 없으면 메타데이터에서 가져와서 업데이트
-          const userPhone = authData.user.user_metadata?.phone || 
-                           authData.user.raw_user_meta_data?.phone || null;
-          if (!profileData.phone && userPhone) {
-            updateData.phone = userPhone;
-            console.log('웹 환경에서 누락된 전화번호 복구:', userPhone);
-          }
-          
           await supabaseClient
             .from('profiles')
-            .update(updateData)
+            .update({ visit_count: (profileData.visit_count || 0) + 1 })
             .eq('user_id', authData.user.id);
         } catch (error) {
           console.warn('방문 횟수 업데이트 오류:', error);
