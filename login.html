@@ -127,6 +127,13 @@
       margin-top: 20px;
     }
     
+    /* 비밀번호 재설정 링크 영역 스타일 */
+    .forgot-password {
+      text-align: center;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    
     /* 개별 링크 스타일 */
     .link {
       display: inline-block;
@@ -185,6 +192,11 @@
     </form>
     <!-- 로그인 폼 끝 -->
     
+    <!-- 비밀번호 재설정 링크 -->
+    <div class="forgot-password">
+      <a href="#" id="forgotPasswordLink" class="link">비밀번호를 잊으셨나요?</a>
+    </div>
+    
     <!-- 회원가입/홈 링크 영역 -->
     <div class="links">
       <a href="signup.html" class="link">회원가입</a>
@@ -196,6 +208,35 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script>
+    // 비밀번호 재설정 링크 클릭 이벤트
+    document.getElementById('forgotPasswordLink').addEventListener('click', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      
+      if (!email) {
+        alert('이메일을 먼저 입력해주세요.');
+        document.getElementById('email').focus();
+        return;
+      }
+      
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('올바른 이메일 형식을 입력해주세요.');
+        document.getElementById('email').focus();
+        return;
+      }
+      
+      // 비밀번호 재설정 요청
+      const result = await resetPassword(email);
+      if (result.success) {
+        alert(result.message);
+      } else {
+        alert(result.userMessage || result.error);
+      }
+    });
+    
     // 로그인 폼 제출 이벤트 리스너 등록
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault(); // 폼의 기본 제출 동작(페이지 새로고침) 방지
@@ -256,7 +297,16 @@
             }, 500);
           } else {
             const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
-            alert(errorMessage);
+            
+            // 비밀번호 관련 오류일 때 재설정 옵션 제공
+            if (errorMessage.includes('비밀번호가 잘못') || errorMessage.includes('Invalid login credentials')) {
+              const resetRequested = await askForPasswordReset(email);
+              if (!resetRequested) {
+                alert(errorMessage);
+              }
+            } else {
+              alert(errorMessage);
+            }
             
             btn.disabled = false;
             btn.textContent = '로그인';
@@ -272,7 +322,15 @@
             ? '네트워크가 불안정합니다. Wi-Fi 연결을 확인해주세요.'
             : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
           
-          alert(errorMessage);
+          // 비밀번호 관련 오류일 때 재설정 옵션 제공
+          if (error.message?.includes('Invalid login credentials') || errorMessage.includes('비밀번호가 잘못')) {
+            const resetRequested = await askForPasswordReset(email);
+            if (!resetRequested) {
+              alert(errorMessage);
+            }
+          } else {
+            alert(errorMessage);
+          }
           
           btn.disabled = false;
           btn.textContent = '로그인';
@@ -307,7 +365,16 @@
             }, 1000);
           } else {
             const errorMessage = result.userMessage || result.error || '로그인에 실패했습니다.';
-            alert(errorMessage);
+            
+            // 비밀번호 관련 오류일 때 재설정 옵션 제공
+            if (errorMessage.includes('비밀번호가 잘못') || errorMessage.includes('Invalid login credentials')) {
+              const resetRequested = await askForPasswordReset(email);
+              if (!resetRequested) {
+                alert(errorMessage);
+              }
+            } else {
+              alert(errorMessage);
+            }
             
             btn.disabled = false;
             btn.textContent = '로그인';
@@ -323,7 +390,15 @@
             ? '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
             : '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
           
-          alert(errorMessage);
+          // 비밀번호 관련 오류일 때 재설정 옵션 제공
+          if (error.message?.includes('Invalid login credentials') || errorMessage.includes('비밀번호가 잘못')) {
+            const resetRequested = await askForPasswordReset(email);
+            if (!resetRequested) {
+              alert(errorMessage);
+            }
+          } else {
+            alert(errorMessage);
+          }
           
           btn.disabled = false;
           btn.textContent = '로그인';

@@ -577,3 +577,94 @@ async function repairMissingPhoneNumbers() {
     return { success: false, error: error.message };
   }
 } 
+
+/**
+ * 비밀번호 재설정 함수
+ * - 사용자 이메일로 비밀번호 재설정 링크를 전송
+ * @param {string} email 사용자 이메일
+ * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+ */
+async function resetPassword(email) {
+  const isMobile = isMobileEnvironment();
+  console.log('비밀번호 재설정 요청 - 환경:', isMobile ? '모바일' : '웹', ':', email);
+  
+  try {
+    // 1. 수파베이스 클라이언트 초기화 확인
+    if (!supabaseClient) {
+      throw new Error('수파베이스 클라이언트가 초기화되지 않았습니다.');
+    }
+    
+    // 2. 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('올바른 이메일 형식이 아닙니다.');
+    }
+    
+    // 3. 모바일 환경에서는 더 짧은 타임아웃 사용
+    const timeoutDuration = isMobile ? 15000 : 30000;
+    
+    // 4. 비밀번호 재설정 이메일 전송
+    const resetPromise = supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `https://bcshine.github.io/ZAVIS-login-auth/reset-password.html`
+    });
+    
+    console.log('비밀번호 재설정 이메일 전송 요청 시작...');
+    const { error } = await withMobileTimeout(resetPromise, timeoutDuration);
+    
+    if (error) throw error;
+    
+    const successMessage = isMobile 
+      ? `📧 비밀번호 재설정 링크를 ${email}로 전송했습니다.\n\n📱 모바일에서는 메일 앱을 확인해주세요.`
+      : `📧 비밀번호 재설정 링크를 ${email}로 전송했습니다.\n\n메일함을 확인하고 링크를 클릭해주세요.`;
+    
+    console.log('비밀번호 재설정 이메일 전송 완료');
+    return { success: true, message: successMessage };
+    
+  } catch (error) {
+    console.error('비밀번호 재설정 오류:', error);
+    
+    let errorMessage = '비밀번호 재설정 요청 중 오류가 발생했습니다.';
+    
+    // 구체적인 오류 메시지 분류
+    if (error.message?.includes('User not found') || error.message?.includes('Invalid email')) {
+      errorMessage = '등록되지 않은 이메일입니다. 이메일을 확인해주세요.';
+    } else if (error.message?.includes('올바른 이메일 형식')) {
+      errorMessage = error.message;
+    } else if (error.message?.includes('시간이 초과') || error.message?.includes('모바일 네트워크')) {
+      errorMessage = isMobile 
+        ? '모바일 네트워크가 불안정합니다. Wi-Fi에 연결하거나 잠시 후 다시 시도해주세요.'
+        : '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.';
+    } else if (error.message?.includes('network') || error.message?.includes('NetworkError')) {
+      errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+    } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+      errorMessage = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    
+    return { success: false, error: error.message, userMessage: errorMessage };
+  }
+}
+
+/**
+ * 사용자에게 비밀번호 재설정 확인 요청
+ * - 로그인 실패 시 비밀번호 재설정 옵션 제공
+ * @param {string} email 로그인 시도한 이메일
+ * @returns {Promise<boolean>} 사용자가 재설정 요청했는지 여부
+ */
+async function askForPasswordReset(email) {
+  const resetConfirm = confirm(
+    `로그인에 실패했습니다.\n\n비밀번호를 잊으셨나요? '확인'을 누르면 ${email}로 비밀번호 재설정 링크를 전송합니다.`
+  );
+  
+  if (resetConfirm) {
+    const result = await resetPassword(email);
+    if (result.success) {
+      alert(result.message);
+      return true;
+    } else {
+      alert(result.userMessage || result.error);
+      return false;
+    }
+  }
+  
+  return false;
+} 
