@@ -229,11 +229,15 @@
       }
       
       // 비밀번호 재설정 요청
-      const result = await resetPassword(email);
-      if (result.success) {
-        alert(result.message);
+      if (typeof resetPassword === 'function') {
+        const result = await resetPassword(email);
+        if (result.success) {
+          alert(result.message);
+        } else {
+          alert(result.userMessage || result.error);
+        }
       } else {
-        alert(result.userMessage || result.error);
+        alert('비밀번호 재설정 기능을 로딩 중입니다. 잠시 후 다시 시도해주세요.');
       }
     });
     
